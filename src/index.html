@@ -1,0 +1,22 @@
+<div id="main"></div>
+<script src="app.js"></script>
+<script src="node_modules/mqtt/dist/mqtt.min.js"></script>
+<style type="text/css">
+svg {
+    border: solid 1px black;
+}
+</style>
+
+<script>
+    // TODO/HACK: Remove from being hardcoded
+    var client = mqtt.connect("mqtt://zeus.local:1884")
+
+    client.subscribe("pose/#");
+
+    client.on('message', function (topic, message) {
+        var msg = message.toString();
+        // console.log(msg)
+        app.ports.onMessage.send(msg);
+    })
+</script>
+
