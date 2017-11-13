@@ -1,11 +1,28 @@
 port module Main exposing (..)
 
-import List exposing (map, filter)
+import Utils exposing (takeWhile)
 import Html exposing (div, program, Html)
 import Json.Decode exposing (int, string, float, Decoder, decodeString)
-import Json.Decode.Pipeline exposing (decode, required, optional, hardcoded)
-import Svg exposing (Svg, svg, circle, text, image)
-import Svg.Attributes exposing (cx, cy, r, fill, width, height, xlinkHref, x, y)
+import Json.Decode.Pipeline exposing (decode, required, optional)
+import List exposing (map, filter, map2, drop, concat)
+import Svg exposing (Svg, svg, circle, text, image, line)
+import Svg.Attributes
+    exposing
+        ( cx
+        , cy
+        , r
+        , fill
+        , width
+        , height
+        , xlinkHref
+        , x
+        , y
+        , x1
+        , x2
+        , y1
+        , y2
+        , style
+        )
 
 
 port onMessage : (String -> msg) -> Sub msg
@@ -50,6 +67,8 @@ type alias JointSpec =
     , lankle : Point
     , reye : Point
     , leye : Point
+    , rear : Point
+    , lear : Point
     }
 
 
@@ -89,6 +108,8 @@ jointSpecDecoder =
         |> optional "LAnkle" pointDecoder zeroPoint
         |> optional "REye" pointDecoder zeroPoint
         |> optional "LEye" pointDecoder zeroPoint
+        |> optional "REar" pointDecoder zeroPoint
+        |> optional "LEar" pointDecoder zeroPoint
 
 
 poseDecoder : Decoder Pose
@@ -116,7 +137,7 @@ renderPose rpm =
     case rpm of
         Ok pm ->
             svg [ width "1280", height "720" ]
-                (jointsOnly (points pm.pose.joints)
+                (bones (pm.pose.joints)
                     ++ [ image
                             [ xlinkHref "img/obama-head.png"
                             , x (toString (pm.pose.joints.nose.x - 90))
@@ -129,6 +150,38 @@ renderPose rpm =
 
         Err e ->
             text e
+
+
+bones : JointSpec -> List (Svg m)
+bones joints =
+    let
+        paths =
+            [ [ .nose, .reye, .rear ]
+            , [ .nose, .leye, .lear ]
+            , [ .nose, .neck ]
+            , [ .neck, .rshoulder, .relbow, .rwrist ]
+            , [ .neck, .lshoulder, .lelbow, .lwrist ]
+            , [ .neck, .rhip, .rknee, .rankle ]
+            , [ .neck, .lhip, .lknee, .lankle ]
+            ]
+
+        drawable =
+            map (takeWhile (\j -> (j joints).score /= 0)) paths
+
+        lines =
+            map (\js -> map2 mkLine js (drop 1 js)) drawable
+
+        mkLine j1 j2 =
+            line
+                [ x1 (toString (j1 joints).x)
+                , y1 (toString (j1 joints).y)
+                , x2 (toString (j2 joints).x)
+                , y2 (toString (j2 joints).y)
+                , style "stroke-width: 2; stroke: rgb(0,0,255);"
+                ]
+                []
+    in
+        concat lines
 
 
 jointsOnly : List Point -> List (Svg m)
