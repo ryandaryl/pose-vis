@@ -2,7 +2,7 @@ port module Main exposing (..)
 
 import Utils exposing (takeWhile)
 import Html exposing (div, program, Html)
-import Json.Decode exposing (int, string, float, Decoder, decodeString)
+import Json.Decode exposing (int, string, float, list, Decoder, decodeString)
 import Json.Decode.Pipeline exposing (decode, required, optional)
 import List exposing (map, filter, map2, drop, concat)
 import Svg exposing (Svg, svg, circle, text, image, line)
@@ -38,7 +38,7 @@ init =
 
 
 type alias PoseMsg =
-    { pose : Pose
+    { poses : List Pose
     }
 
 
@@ -124,7 +124,7 @@ poseDecoder =
 poseMsgDecoder : Decoder PoseMsg
 poseMsgDecoder =
     decode PoseMsg
-        |> required "pose" poseDecoder
+        |> required "poses" (list poseDecoder)
 
 
 type Msg
@@ -132,20 +132,27 @@ type Msg
     | Message String
 
 
-renderPose : Result String PoseMsg -> Html m
-renderPose rpm =
+renderSinglePose : Pose -> List (Svg m)
+renderSinglePose pose =
+    (bones (pose.joints)
+        ++ [ image
+                [ xlinkHref "img/obama-head.png"
+                , x (toString (pose.joints.nose.x - 90))
+                , y (toString (pose.joints.nose.y - 100))
+                , height "200"
+                ]
+                []
+           ]
+    )
+
+
+renderPoses : Result String PoseMsg -> Html m
+renderPoses rpm =
     case rpm of
         Ok pm ->
             svg [ width "1280", height "720" ]
-                (bones (pm.pose.joints)
-                    ++ [ image
-                            [ xlinkHref "img/obama-head.png"
-                            , x (toString (pm.pose.joints.nose.x - 90))
-                            , y (toString (pm.pose.joints.nose.y - 100))
-                            , height "200"
-                            ]
-                            []
-                       ]
+                (concat
+                    (map renderSinglePose pm.poses)
                 )
 
         Err e ->
@@ -220,7 +227,7 @@ points j =
 view : Model -> Html Msg
 view model =
     div []
-        [ renderPose (decodeString poseMsgDecoder model) ]
+        [ renderPoses (decodeString poseMsgDecoder model) ]
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
