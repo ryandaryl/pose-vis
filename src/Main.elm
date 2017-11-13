@@ -65,6 +65,7 @@ pointDecoder =
         |> optional "score" float 0
 
 
+zeroPoint : Point
 zeroPoint =
     Point 0 0 0
 
