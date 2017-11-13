@@ -11,7 +11,7 @@ svg {
     // TODO/HACK: Remove from being hardcoded
     var client = mqtt.connect("mqtt://zeus.local:1884")
 
-    client.subscribe("pose/#");
+    client.subscribe("pose/output");
 
     client.on('message', function (topic, message) {
         var msg = message.toString();
