@@ -1,6 +1,6 @@
 port module Main exposing (..)
 
-import List exposing (map)
+import List exposing (map, filter)
 import Html exposing (div, program, Html)
 import Json.Decode exposing (int, string, float, Decoder, decodeString)
 import Json.Decode.Pipeline exposing (decode, required, optional, hardcoded)
@@ -115,20 +115,22 @@ renderPose rpm =
     case rpm of
         Ok pm ->
             svg [ width "1280", height "720" ]
-                (map
-                    (\p ->
-                        circle
-                            [ cx (toString p.x)
-                            , cy (toString p.y)
-                            , r "10"
-                            ]
-                            []
-                    )
-                    (points pm.pose.joints)
-                )
+                (jointsOnly (points pm.pose.joints))
 
         Err e ->
             text e
+
+
+jointsOnly : List Point -> List (Svg m)
+jointsOnly ps =
+    let
+        nonZero =
+            filter (\p -> p.x /= 0 && p.y /= 0) ps
+
+        f { x, y } =
+            circle [ cx (toString x), cy (toString y), r "10" ] []
+    in
+        map f nonZero
 
 
 points : JointSpec -> List Point

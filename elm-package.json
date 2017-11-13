@@ -1,6 +1,7 @@
 {
     "version": "1.0.0",
     "summary": "Listen to MQTT and watch poses come through.",
+    "repository": "https://github.com/x/x.git",
     "license": "BSD3",
     "source-directories": [
         "src"
