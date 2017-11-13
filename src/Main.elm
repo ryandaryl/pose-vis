@@ -4,8 +4,8 @@ import List exposing (map, filter)
 import Html exposing (div, program, Html)
 import Json.Decode exposing (int, string, float, Decoder, decodeString)
 import Json.Decode.Pipeline exposing (decode, required, optional, hardcoded)
-import Svg exposing (Svg, svg, circle, text)
-import Svg.Attributes exposing (cx, cy, r, fill, width, height)
+import Svg exposing (Svg, svg, circle, text, image)
+import Svg.Attributes exposing (cx, cy, r, fill, width, height, xlinkHref, x, y)
 
 
 port onMessage : (String -> msg) -> Sub msg
@@ -116,7 +116,16 @@ renderPose rpm =
     case rpm of
         Ok pm ->
             svg [ width "1280", height "720" ]
-                (jointsOnly (points pm.pose.joints))
+                (jointsOnly (points pm.pose.joints)
+                    ++ [ image
+                            [ xlinkHref "img/obama-head.png"
+                            , x (toString (pm.pose.joints.nose.x - 90))
+                            , y (toString (pm.pose.joints.nose.y - 100))
+                            , height "200"
+                            ]
+                            []
+                       ]
+                )
 
         Err e ->
             text e
