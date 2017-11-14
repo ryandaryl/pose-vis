@@ -1,9 +1,18 @@
 module Utils exposing (..)
 
-{-| Take elements in order as long as the predicate evaluates to `True`
+{-| Copied code.
 -}
 
 
+{-| Good one.
+-}
+get : Int -> List a -> Maybe a
+get n xs =
+    List.head (List.drop n xs)
+
+
+{-| Take elements in order as long as the predicate evaluates to `True`
+-}
 takeWhile : (a -> Bool) -> List a -> List a
 takeWhile predicate =
     let
