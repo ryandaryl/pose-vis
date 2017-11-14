@@ -150,13 +150,32 @@ type Msg
     | Message String
 
 
-maybeHead : Point -> List (Svg m)
-maybeHead point =
+headImages =
+    [ "img/obama-head.png"
+    , "img/ada-head.png"
+    , "img/haskell-head.png"
+    , "img/grace-hopper-head.png"
+    , "img/beyonce-head.png"
+    , "img/spj-head.png"
+    ]
+
+
+maybeHead : Int -> Point -> List (Svg m)
+maybeHead id point =
     if point.score == 0 then
         []
     else
         [ image
-            [ xlinkHref "img/obama-head.png"
+            [ xlinkHref
+                (withDefault ("img/obama-head.png")
+                    (get
+                        (id
+                            % length
+                                headImages
+                        )
+                        headImages
+                    )
+                )
             , x (toString (point.x - 90))
             , y (toString (point.y - 100))
             , height "200"
@@ -167,7 +186,7 @@ maybeHead point =
 
 renderSinglePose : Pose -> List (Svg m)
 renderSinglePose pose =
-    (bones (getColourForId pose.id) (pose.joints) ++ maybeHead pose.joints.nose)
+    (bones (getColourForId pose.id) (pose.joints) ++ maybeHead pose.id pose.joints.nose)
 
 
 renderPoses : Result String PoseMsg -> Html m
