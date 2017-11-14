@@ -1,5 +1,6 @@
 port module Main exposing (..)
 
+import Lazy.List exposing (cycle, fromList)
 import Utils exposing (takeWhile)
 import Html exposing (div, program, Html)
 import Json.Decode exposing (int, string, float, list, Decoder, decodeString)
@@ -29,12 +30,21 @@ port onMessage : (String -> msg) -> Sub msg
 
 
 type alias Model =
-    String
+    { json : String
+    }
+
+
+baseColours =
+    [ "#2560fe"
+    , "#a200ff"
+    , "#ff4040"
+    , "#6dc066"
+    ]
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( "Hello!", Cmd.none )
+    ( Model "Hello!", Cmd.none )
 
 
 type alias PoseMsg =
@@ -132,18 +142,24 @@ type Msg
     | Message String
 
 
-renderSinglePose : Pose -> List (Svg m)
-renderSinglePose pose =
-    (bones (pose.joints)
-        ++ [ image
-                [ xlinkHref "img/obama-head.png"
-                , x (toString (pose.joints.nose.x - 90))
-                , y (toString (pose.joints.nose.y - 100))
-                , height "200"
-                ]
-                []
-           ]
-    )
+maybeHead : Point -> List (Svg m)
+maybeHead point =
+    if point.score == 0 then
+        []
+    else
+        [ image
+            [ xlinkHref "img/obama-head.png"
+            , x (toString (point.x - 90))
+            , y (toString (point.y - 100))
+            , height "200"
+            ]
+            []
+        ]
+
+
+renderSinglePose : String -> Pose -> List (Svg m)
+renderSinglePose colour pose =
+    (bones colour (pose.joints) ++ maybeHead pose.joints.nose)
 
 
 renderPoses : Result String PoseMsg -> Html m
@@ -152,15 +168,18 @@ renderPoses rpm =
         Ok pm ->
             svg [ width "1280", height "720" ]
                 (concat
-                    (map renderSinglePose pm.poses)
+                    -- Geez Elm ...
+                    (Lazy.List.toList
+                        (Lazy.List.map2 renderSinglePose (cycle (fromList baseColours)) (fromList pm.poses))
+                    )
                 )
 
         Err e ->
             text e
 
 
-bones : JointSpec -> List (Svg m)
-bones joints =
+bones : String -> JointSpec -> List (Svg m)
+bones colour joints =
     let
         paths =
             [ [ .nose, .reye, .rear ]
@@ -184,7 +203,7 @@ bones joints =
                 , y1 (toString (j1 joints).y)
                 , x2 (toString (j2 joints).x)
                 , y2 (toString (j2 joints).y)
-                , style "stroke-width: 2; stroke: rgb(0,0,255);"
+                , style ("stroke-width: 2; stroke: " ++ colour ++ ";") -- rgb(0,0,255);"
                 ]
                 []
     in
@@ -227,7 +246,7 @@ points j =
 view : Model -> Html Msg
 view model =
     div []
-        [ renderPoses (decodeString poseMsgDecoder model) ]
+        [ renderPoses (decodeString poseMsgDecoder model.json) ]
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -237,7 +256,7 @@ update msg model =
             ( model, Cmd.none )
 
         Message m ->
-            ( m, Cmd.none )
+            ( Model m, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
