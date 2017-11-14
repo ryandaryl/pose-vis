@@ -1,5 +1,7 @@
 port module Main exposing (..)
 
+import Random exposing (generate)
+import Random.List exposing (shuffle)
 import Lazy.List exposing (cycle, fromList)
 import Utils exposing (takeWhile)
 import Html exposing (div, program, Html)
@@ -31,6 +33,7 @@ port onMessage : (String -> msg) -> Sub msg
 
 type alias Model =
     { json : String
+    , colours : List String
     }
 
 
@@ -44,7 +47,7 @@ baseColours =
 
 init : ( Model, Cmd Msg )
 init =
-    ( Model "Hello!", Cmd.none )
+    ( Model "Hello!" baseColours, Cmd.none )
 
 
 type alias PoseMsg =
@@ -139,6 +142,7 @@ poseMsgDecoder =
 
 type Msg
     = NoOp
+    | ShuffleColours String (List String)
     | Message String
 
 
@@ -162,15 +166,15 @@ renderSinglePose colour pose =
     (bones colour (pose.joints) ++ maybeHead pose.joints.nose)
 
 
-renderPoses : Result String PoseMsg -> Html m
-renderPoses rpm =
+renderPoses : Result String PoseMsg -> List String -> Html m
+renderPoses rpm colours =
     case rpm of
         Ok pm ->
             svg [ width "1280", height "720" ]
                 (concat
                     -- Geez Elm ...
                     (Lazy.List.toList
-                        (Lazy.List.map2 renderSinglePose (cycle (fromList baseColours)) (fromList pm.poses))
+                        (Lazy.List.map2 renderSinglePose (cycle (fromList colours)) (fromList pm.poses))
                     )
                 )
 
@@ -246,7 +250,7 @@ points j =
 view : Model -> Html Msg
 view model =
     div []
-        [ renderPoses (decodeString poseMsgDecoder model.json) ]
+        [ renderPoses (decodeString poseMsgDecoder model.json) model.colours ]
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -255,8 +259,13 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
+        -- TODO: This is very ugly; fix it up. Maybe move more of the logic
+        -- into the update?
         Message m ->
-            ( Model m, Cmd.none )
+            ( model, generate (\cs -> ShuffleColours m cs) (shuffle baseColours) )
+
+        ShuffleColours m cs ->
+            ( Model m cs, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
