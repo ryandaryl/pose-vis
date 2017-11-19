@@ -214,7 +214,7 @@ bones colour joints =
             ]
 
         drawable =
-            map (takeWhile (\j -> (j joints).score /= 0)) paths
+            map (takeWhile (\j -> notZero (j joints))) paths
 
         lines =
             map (\js -> map2 mkLine js (drop 1 js)) drawable
@@ -232,11 +232,19 @@ bones colour joints =
         concat lines
 
 
+zero p =
+    p.x == 0 || p.y == 0 || p.score == 0
+
+
+notZero =
+    not << zero
+
+
 jointsOnly : List Point -> List (Svg m)
 jointsOnly ps =
     let
         nonZero =
-            filter (\p -> p.x /= 0 && p.y /= 0) ps
+            filter notZero ps
 
         f { x, y } =
             circle [ cx (toString x), cy (toString y), r "10" ] []
