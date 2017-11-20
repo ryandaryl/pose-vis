@@ -1,25 +1,41 @@
+<title>Pose Visualisation</title>
 <div id="main"></div>
 <script src="app.js"></script>
 <script src="node_modules/mqtt/dist/mqtt.min.js"></script>
 <style type="text/css">
 svg {
-    border: solid 1px black;
-    transform: rotateY(180deg);
-    -webkit-transform:rotateY(180deg); /* Safari and Chrome */
-    -moz-transform:rotateY(180deg); /* Firefox */
+    border:            solid 1px black;
+    transform:         rotateY(180deg);
+    -webkit-transform: rotateY(180deg); /* Safari and Chrome */
+    -moz-transform:    rotateY(180deg); /* Firefox */
 }
 </style>
 
 <script>
-    // TODO/HACK: Remove from being hardcoded
     var client = mqtt.connect("mqtt://zeus.local:1884")
+    var topic  = "pose/output";
 
-    client.subscribe("pose/output");
+    function reconnect () {
+        client.subscribe(topic);
 
-    client.on('message', function (topic, message) {
-        var msg = message.toString();
-        // console.log(msg)
-        app.ports.onMessage.send(msg);
-    })
+        client.on('message', function (topic, message) {
+            var msg = message.toString();
+            app.ports.onMessage.send(msg);
+        });
+    };
+    reconnect();
+
+
+    app.ports.changeMqttTopic.subscribe(function (newTopic) {
+        client.unsubscribe(topic);
+        client.subscribe(newTopic);
+        topic = newTopic;
+    });
+
+    app.ports.changeMqttClient.subscribe(function (newClient) {
+        client.end();
+        client = mqtt.connect(newClient);
+        reconnect();
+    });
 </script>
 

@@ -1,11 +1,13 @@
 port module Main exposing (..)
 
-import Html exposing (div, program, Html)
-import Json.Decode exposing (int, string, float, list, Decoder, decodeString)
-import Json.Decode.Pipeline exposing (decode, required, optional)
+import Html exposing (div, program, Html, input, label)
+import Html.Attributes exposing (class, id, value, name, for, type_, checked)
+import Html.Events exposing (onInput, onClick)
+import Json.Decode exposing (string, decodeString)
 import Lazy.List exposing (cycle, fromList)
 import List exposing (map, filter, map2, drop, concat, length)
 import Maybe exposing (withDefault)
+import PoseProtocol exposing (..)
 import Random exposing (generate)
 import Random.List exposing (shuffle)
 import Svg exposing (Svg, svg, circle, text, image, line)
@@ -29,14 +31,22 @@ import Svg.Attributes
         )
 
 
+{-| Input port for the messages coming in of the input queue.
+-}
 port onMessage : (String -> msg) -> Sub msg
 
 
-type alias Model =
-    { json : String
-    }
+port changeMqttTopic : String -> Cmd msg
 
 
+port changeMqttClient : String -> Cmd msg
+
+
+port toggleHeads : Bool -> Cmd msg
+
+
+{-| Hardcoded constant colours that I've arbitrarily decided on.
+-}
 baseColours =
     [ "#2560fe"
     , "#a200ff"
@@ -50,104 +60,91 @@ getColourForId k =
     withDefault ("#000000") (get (k % (length baseColours)) baseColours)
 
 
+type alias Model =
+    { poses : List Pose
+    , inTopic : String
+    , mqttClient : String
+    , showHeads : Bool
+    }
+
+
 init : ( Model, Cmd Msg )
 init =
-    ( Model "Hello!", Cmd.none )
+    ( Model [] "pose/output" "mqtt://zeus.local:1884" True, Cmd.none )
 
 
-type alias PoseMsg =
-    { poses : List Pose
-    }
+view : Model -> Html Msg
+view model =
+    div []
+        [ div
+            []
+            [ label [ for "mqtt-client" ] [ text "MQTT Client: " ]
+            , input
+                [ class ""
+                , name "mqtt-client"
+                , onInput UpdateMqttClient
+                , value model.mqttClient
+                ]
+                []
+            , label [ for "in-topic" ] [ text "In Topic: " ]
+            , input
+                [ class ""
+                , name "in-topic"
+                , onInput UpdateInTopic
+                , value model.inTopic
+                ]
+                []
+            , label [ for "toggle-heads" ] [ text "Show Heads: " ]
+            , input
+                [ class ""
+                , type_ "checkbox"
+                , name "toggle-heads"
+                , onClick (ToggleHeads (not model.showHeads))
+                , checked model.showHeads
+                ]
+                []
+            ]
+        , div [] [ renderPoses model ]
+        ]
 
 
-type alias Pose =
-    { joints : JointSpec
-    , frame : Int
-    , id : Int
-    , time : Float
-    }
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        NoOp ->
+            ( model, Cmd.none )
+
+        UpdateMqttClient client ->
+            ( { model | mqttClient = client }, changeMqttClient client )
+
+        UpdateInTopic topic ->
+            ( { model | inTopic = topic }, changeMqttTopic topic )
+
+        ToggleHeads sh ->
+            ( { model | showHeads = sh }, toggleHeads sh )
+
+        Message json ->
+            ( { model | poses = (decodePoses json) }, Cmd.none )
 
 
-type alias JointSpec =
-    { nose : Point
-    , neck : Point
-    , rshoulder : Point
-    , relbow : Point
-    , rwrist : Point
-    , lshoulder : Point
-    , lelbow : Point
-    , lwrist : Point
-    , rhip : Point
-    , rknee : Point
-    , rankle : Point
-    , lhip : Point
-    , lknee : Point
-    , lankle : Point
-    , reye : Point
-    , leye : Point
-    , rear : Point
-    , lear : Point
-    }
+decodePoses : String -> List Pose
+decodePoses json =
+    case decodeString poseMsgDecoder json of
+        Ok ps ->
+            ps.poses
 
-
-type alias Point =
-    { x : Float, y : Float, score : Float }
-
-
-pointDecoder : Decoder Point
-pointDecoder =
-    decode Point
-        |> optional "x" float 0
-        |> optional "y" float 0
-        |> optional "score" float 0
-
-
-zeroPoint : Point
-zeroPoint =
-    Point 0 0 0
-
-
-jointSpecDecoder : Decoder JointSpec
-jointSpecDecoder =
-    decode JointSpec
-        |> optional "Nose" pointDecoder zeroPoint
-        |> optional "Neck" pointDecoder zeroPoint
-        |> optional "RShoulder" pointDecoder zeroPoint
-        |> optional "RElbow" pointDecoder zeroPoint
-        |> optional "RWrist" pointDecoder zeroPoint
-        |> optional "LShoulder" pointDecoder zeroPoint
-        |> optional "LElbow" pointDecoder zeroPoint
-        |> optional "LWrist" pointDecoder zeroPoint
-        |> optional "RHip" pointDecoder zeroPoint
-        |> optional "RKnee" pointDecoder zeroPoint
-        |> optional "RAnkle" pointDecoder zeroPoint
-        |> optional "LHip" pointDecoder zeroPoint
-        |> optional "LKnee" pointDecoder zeroPoint
-        |> optional "LAnkle" pointDecoder zeroPoint
-        |> optional "REye" pointDecoder zeroPoint
-        |> optional "LEye" pointDecoder zeroPoint
-        |> optional "REar" pointDecoder zeroPoint
-        |> optional "LEar" pointDecoder zeroPoint
-
-
-poseDecoder : Decoder Pose
-poseDecoder =
-    decode Pose
-        |> required "joints" jointSpecDecoder
-        |> required "frame" int
-        |> required "id" int
-        |> required "time" float
-
-
-poseMsgDecoder : Decoder PoseMsg
-poseMsgDecoder =
-    decode PoseMsg
-        |> required "poses" (list poseDecoder)
+        Err e ->
+            []
 
 
 type Msg
     = NoOp
+      -- Inoming MQTT Message
     | Message String
+      -- Outgoing actions for the form fields
+    | UpdateInTopic String
+    | UpdateMqttClient String
+    | ToggleHeads Bool
 
 
 headImages =
@@ -160,9 +157,12 @@ headImages =
     ]
 
 
-maybeHead : Int -> Point -> List (Svg m)
-maybeHead id point =
-    if point.score == 0 then
+{-| Given a neck, draw a head. If there isn't any neck, then don't draw
+anything!
+-}
+maybeHead : Bool -> Int -> Point -> List (Svg m)
+maybeHead showHeads id point =
+    if point.score == 0 || not showHeads then
         []
     else
         [ image
@@ -176,28 +176,26 @@ maybeHead id point =
                         headImages
                     )
                 )
-            , x (toString (point.x - 90))
-            , y (toString (point.y - 100))
-            , height "200"
+            , x (toString (point.x / 2 - 30))
+            , y (toString (point.y / 2 - 40))
+            , height "80"
             ]
             []
         ]
 
 
-renderSinglePose : Pose -> List (Svg m)
-renderSinglePose pose =
-    (bones (getColourForId pose.id) (pose.joints) ++ maybeHead pose.id pose.joints.nose)
+renderSinglePose : Model -> Pose -> List (Svg m)
+renderSinglePose model pose =
+    (bones (getColourForId pose.id) (pose.joints) ++ maybeHead model.showHeads pose.id pose.joints.nose)
 
 
-renderPoses : Result String PoseMsg -> Html m
-renderPoses rpm =
-    case rpm of
-        Ok pm ->
-            svg [ width "1280", height "720" ]
-                (concat (map renderSinglePose pm.poses))
-
-        Err e ->
-            text e
+{-| Just applies 'renderSinglePose' to all the poses; and puts them in a list.
+Note that we've halved the display sie so things are easier to deal with.
+-}
+renderPoses : Model -> Html m
+renderPoses model =
+    svg [ width "640", height "360" ]
+        (concat (map (renderSinglePose model) model.poses))
 
 
 bones : String -> JointSpec -> List (Svg m)
@@ -221,23 +219,19 @@ bones colour joints =
 
         mkLine j1 j2 =
             line
-                [ x1 (toString (j1 joints).x)
-                , y1 (toString (j1 joints).y)
-                , x2 (toString (j2 joints).x)
-                , y2 (toString (j2 joints).y)
-                , style ("stroke-width: 2; stroke: " ++ colour ++ ";")
+                [ x1 (toString ((j1 joints).x / 2))
+                , y1 (toString ((j1 joints).y / 2))
+                , x2 (toString ((j2 joints).x / 2))
+                , y2 (toString ((j2 joints).y / 2))
+                , style ("stroke-width: 5; stroke: " ++ colour ++ ";")
                 ]
                 []
     in
         concat lines
 
 
-zero p =
-    p.x == 0 || p.y == 0 || p.score == 0
-
-
-notZero =
-    not << zero
+notZero p =
+    not (p.x == 0 || p.y == 0 || p.score == 0)
 
 
 jointsOnly : List Point -> List (Svg m)
@@ -250,43 +244,6 @@ jointsOnly ps =
             circle [ cx (toString x), cy (toString y), r "10" ] []
     in
         map f nonZero
-
-
-points : JointSpec -> List Point
-points j =
-    [ j.nose
-    , j.neck
-    , j.rshoulder
-    , j.relbow
-    , j.rwrist
-    , j.lshoulder
-    , j.lelbow
-    , j.lwrist
-    , j.rhip
-    , j.rknee
-    , j.rankle
-    , j.lhip
-    , j.lknee
-    , j.lankle
-    , j.reye
-    , j.leye
-    ]
-
-
-view : Model -> Html Msg
-view model =
-    div []
-        [ renderPoses (decodeString poseMsgDecoder model.json) ]
-
-
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    case msg of
-        NoOp ->
-            ( model, Cmd.none )
-
-        Message m ->
-            ( Model m, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
