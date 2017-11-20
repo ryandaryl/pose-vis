@@ -39,7 +39,7 @@ port onMessage : (String -> msg) -> Sub msg
 port changeMqttTopic : String -> Cmd msg
 
 
-port changeMqttClient : String -> Cmd msg
+port changeMqttServer : String -> Cmd msg
 
 
 port toggleHeads : Bool -> Cmd msg
@@ -63,7 +63,7 @@ getColourForId k =
 type alias Model =
     { poses : List Pose
     , inTopic : String
-    , mqttClient : String
+    , mqttServer : String
     , showHeads : Bool
     }
 
@@ -75,29 +75,26 @@ init =
 
 view : Model -> Html Msg
 view model =
-    div []
+    div [ class "container" ]
         [ div
             []
-            [ label [ for "mqtt-client" ] [ text "MQTT Client: " ]
+            [ label [ for "mqtt-server" ] [ text "MQTT Server: " ]
             , input
-                [ class ""
-                , name "mqtt-client"
-                , onInput UpdateMqttClient
-                , value model.mqttClient
+                [ name "mqtt-server"
+                , onInput UpdateMqttServer
+                , value model.mqttServer
                 ]
                 []
             , label [ for "in-topic" ] [ text "In Topic: " ]
             , input
-                [ class ""
-                , name "in-topic"
+                [ name "in-topic"
                 , onInput UpdateInTopic
                 , value model.inTopic
                 ]
                 []
             , label [ for "toggle-heads" ] [ text "Show Heads: " ]
             , input
-                [ class ""
-                , type_ "checkbox"
+                [ type_ "checkbox"
                 , name "toggle-heads"
                 , onClick (ToggleHeads (not model.showHeads))
                 , checked model.showHeads
@@ -114,8 +111,8 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
-        UpdateMqttClient client ->
-            ( { model | mqttClient = client }, changeMqttClient client )
+        UpdateMqttServer server ->
+            ( { model | mqttServer = server }, changeMqttServer server )
 
         UpdateInTopic topic ->
             ( { model | inTopic = topic }, changeMqttTopic topic )
@@ -143,7 +140,7 @@ type Msg
     | Message String
       -- Outgoing actions for the form fields
     | UpdateInTopic String
-    | UpdateMqttClient String
+    | UpdateMqttServer String
     | ToggleHeads Bool
 
 

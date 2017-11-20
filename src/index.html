@@ -3,12 +3,21 @@
 <script src="app.js"></script>
 <script src="node_modules/mqtt/dist/mqtt.min.js"></script>
 <style type="text/css">
+/* This really upsets Carson */
+#main { 
+    display: table;
+    margin-right: auto;
+    margin-left: auto;
+}
+
 svg {
     border:            solid 1px black;
     transform:         rotateY(180deg);
     -webkit-transform: rotateY(180deg); /* Safari and Chrome */
     -moz-transform:    rotateY(180deg); /* Firefox */
 }
+
+label { padding: 5px; }
 </style>
 
 <script>
@@ -32,9 +41,9 @@ svg {
         topic = newTopic;
     });
 
-    app.ports.changeMqttClient.subscribe(function (newClient) {
+    app.ports.changeMqttServer.subscribe(function (newServer) {
         client.end();
-        client = mqtt.connect(newClient);
+        client = mqtt.connect(newServer);
         reconnect();
     });
 </script>
