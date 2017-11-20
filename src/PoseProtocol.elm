@@ -60,6 +60,8 @@ points j =
     , j.lankle
     , j.reye
     , j.leye
+    , j.rear
+    , j.lear
     ]
 
 
