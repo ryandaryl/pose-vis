@@ -1,5 +1,6 @@
 port module Main exposing (..)
 
+import Json.Encode exposing (encode)
 import Html exposing (div, program, Html, input, label)
 import Html.Attributes exposing (class, id, value, name, for, type_, checked)
 import Html.Events exposing (onInput, onClick)
@@ -36,17 +37,26 @@ import Svg.Attributes
 port onMessage : (String -> msg) -> Sub msg
 
 
+
+-- port danceCrew : Bool -> Cmd msg
+
+
+port sendConfigureMessage : String -> Cmd msg
+
+
 port changeMqttTopic : String -> Cmd msg
 
 
 port changeMqttServer : String -> Cmd msg
 
 
-port toggleHeads : Bool -> Cmd msg
+
+-- port toggleHeads : Bool -> Cmd msg
 
 
 {-| Hardcoded constant colours that I've arbitrarily decided on.
 -}
+baseColours : List String
 baseColours =
     [ "#2560fe"
     , "#a200ff"
@@ -65,12 +75,14 @@ type alias Model =
     , inTopic : String
     , mqttServer : String
     , showHeads : Bool
+    , danceCrew : Bool
+    , temperature : Float
     }
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( Model [] "pose/output" "mqtt://zeus.local:1884" True, Cmd.none )
+    ( Model [] "pose/output" "mqtt://zeus.local:1884" True False 0.8, Cmd.none )
 
 
 view : Model -> Html Msg
@@ -102,6 +114,29 @@ view model =
                 []
             ]
         , div [] [ renderPoses model ]
+        , div []
+            [ label [ for "dance-crew" ] [ text "Dance Crew? " ]
+            , input
+                [ type_ "checkbox"
+                , name "dance-crew"
+                , onClick (DanceCrew (not model.danceCrew))
+                , checked model.danceCrew
+                ]
+                []
+            , label [ for "temperature" ] [ text "Temperature " ]
+            , input
+                [ name "temperature"
+                , onInput
+                    (Temperature
+                        << (\s ->
+                                Result.withDefault 0.8
+                                    (String.toFloat s)
+                           )
+                    )
+                , value (toString model.temperature)
+                ]
+                []
+            ]
         ]
 
 
@@ -118,10 +153,53 @@ update msg model =
             ( { model | inTopic = topic }, changeMqttTopic topic )
 
         ToggleHeads sh ->
-            ( { model | showHeads = sh }, toggleHeads sh )
+            ( { model | showHeads = sh }, Cmd.none )
+
+        Temperature temp ->
+            let
+                newModel =
+                    { model | temperature = temp }
+            in
+                ( newModel
+                , Cmd.batch
+                    [ doSendConfigureMessage
+                        newModel
+                    , Cmd.none
+                    ]
+                )
 
         Message json ->
             ( { model | poses = (decodePoses json) }, Cmd.none )
+
+        DanceCrew crew ->
+            let
+                newModel =
+                    { model | danceCrew = crew }
+            in
+                ( newModel
+                , doSendConfigureMessage
+                    newModel
+                )
+
+
+{-| TODO: This should be radically cleaned up.
+-}
+doSendConfigureMessage model =
+    let
+        json =
+            (encode
+                0
+                (configureObj
+                    (ConfigureMsg
+                        (Configure
+                            model.danceCrew
+                            model.temperature
+                        )
+                    )
+                )
+            )
+    in
+        sendConfigureMessage json
 
 
 decodePoses : String -> List Pose
@@ -142,8 +220,15 @@ type Msg
     | UpdateInTopic String
     | UpdateMqttServer String
     | ToggleHeads Bool
+    | DanceCrew Bool
+    | Temperature Float
 
 
+
+-- | SendConfigureMessage String
+
+
+headImages : List String
 headImages =
     [ "img/obama-head.png"
     , "img/ada-head.png"

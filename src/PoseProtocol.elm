@@ -1,5 +1,6 @@
 module PoseProtocol exposing (..)
 
+import Json.Encode exposing (Value, object, bool)
 import Json.Decode exposing (int, float, list, Decoder)
 import Json.Decode.Pipeline exposing (decode, required, optional)
 
@@ -15,6 +16,31 @@ type alias Pose =
     , id : Int
     , time : Float
     }
+
+
+type alias ConfigureMsg =
+    { configure : Configure
+    }
+
+
+type alias Configure =
+    { crew : Bool
+    , temperature : Float
+    }
+
+
+{-| The worst code ever. XXX/HACK
+-}
+configureObj : ConfigureMsg -> Value
+configureObj c =
+    object
+        [ ( "configure"
+          , object
+                [ ( "crew", bool c.configure.crew )
+                , ( "temperature", Json.Encode.float c.configure.temperature )
+                ]
+          )
+        ]
 
 
 type alias JointSpec =

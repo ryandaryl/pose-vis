@@ -34,6 +34,11 @@ label { padding: 5px; }
     };
     reconnect();
 
+    app.ports.sendConfigureMessage.subscribe(function(json) {
+        console.log("sending configure ,,,");
+        console.log(json)
+        client.publish(topic, json)
+    });
 
     app.ports.changeMqttTopic.subscribe(function (newTopic) {
         client.unsubscribe(topic);
