@@ -126,6 +126,10 @@ view model =
             , label [ for "temperature" ] [ text "Temperature " ]
             , input
                 [ name "temperature"
+                , type_ "range"
+                , Html.Attributes.min "0"
+                , Html.Attributes.max "1"
+                , Html.Attributes.step "0.05"
                 , onInput
                     (Temperature
                         << (\s ->
