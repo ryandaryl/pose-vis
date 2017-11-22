@@ -29,7 +29,9 @@ type alias Configure =
     }
 
 
-{-| The worst code ever. XXX/HACK
+{-| The worst code ever. XXX/HACK.
+There must be a way to do this automatically but a few seconds of googling
+didn't give me the answer.
 -}
 configureObj : ConfigureMsg -> Value
 configureObj c =
