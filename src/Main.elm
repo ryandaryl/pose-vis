@@ -5,12 +5,9 @@ import Html exposing (div, program, Html, input, label)
 import Html.Attributes exposing (class, id, value, name, for, type_, checked)
 import Html.Events exposing (onInput, onClick)
 import Json.Decode exposing (string, decodeString)
-import Lazy.List exposing (cycle, fromList)
 import List exposing (map, filter, map2, drop, concat, length)
 import Maybe exposing (withDefault)
 import PoseProtocol exposing (..)
-import Random exposing (generate)
-import Random.List exposing (shuffle)
 import Svg exposing (Svg, svg, circle, text, image, line)
 import Utils exposing (takeWhile, get)
 import Svg.Attributes
@@ -37,10 +34,6 @@ import Svg.Attributes
 port onMessage : (String -> msg) -> Sub msg
 
 
-
--- port danceCrew : Bool -> Cmd msg
-
-
 port sendConfigureMessage : String -> Cmd msg
 
 
@@ -48,10 +41,6 @@ port changeMqttTopic : String -> Cmd msg
 
 
 port changeMqttServer : String -> Cmd msg
-
-
-
--- port toggleHeads : Bool -> Cmd msg
 
 
 {-| Hardcoded constant colours that I've arbitrarily decided on.
@@ -226,10 +215,6 @@ type Msg
     | ToggleHeads Bool
     | DanceCrew Bool
     | Temperature Float
-
-
-
--- | SendConfigureMessage String
 
 
 headImages : List String
