@@ -1,7 +1,7 @@
 port module Main exposing (..)
 
 import Json.Encode exposing (encode)
-import Html exposing (div, program, Html, input, label)
+import Html exposing (div, program, Html, input, label, img)
 import Html.Attributes exposing (class, id, value, name, for, type_, checked)
 import Html.Events exposing (onInput, onClick)
 import Json.Decode exposing (string, decodeString)
@@ -127,6 +127,12 @@ view model =
                            )
                     )
                 , value (toString model.temperature)
+                ]
+                []
+            , img
+                [ Html.Attributes.src "img/sp.png"
+                , height "30"
+                , class "logo"
                 ]
                 []
             ]
