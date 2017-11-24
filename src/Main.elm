@@ -45,18 +45,22 @@ port changeMqttServer : String -> Cmd msg
 
 {-| Hardcoded constant colours that I've arbitrarily decided on.
 -}
-baseColours : List String
-baseColours =
-    [ "#2560fe"
-    , "#a200ff"
-    , "#ff4040"
-    , "#6dc066"
+baseColourPairs : List ( String, String )
+baseColourPairs =
+    [ ( "#8787ff", "#ff00d7" ) -- Purple/Pink
+    , ( "#5fd7d7", "#00d75f" ) -- Blue/Green
+    , ( "#ff5f5f", "#ffd787" ) -- Red/Orange
+    , ( "#00ff5f", "#5fffd7" ) -- BrightGreen/WeirdGreen
+    , ( "#d787ff", "#00d7ff" ) -- Purple/Blue
     ]
 
 
-getColourForId : Int -> String
-getColourForId k =
-    withDefault ("#000000") (get (k % (length baseColours)) baseColours)
+getColourPairForId : Int -> ( String, String )
+getColourPairForId k =
+    withDefault ( "#000000", "#000000" )
+        (get (k % (length baseColourPairs))
+            baseColourPairs
+        )
 
 
 type alias Model =
@@ -263,7 +267,7 @@ maybeHead showHeads id point =
 
 renderSinglePose : Model -> Pose -> List (Svg m)
 renderSinglePose model pose =
-    (bones (getColourForId pose.id) (pose.joints) ++ maybeHead model.showHeads pose.id pose.joints.nose)
+    (bones (getColourPairForId pose.id) (pose.joints) ++ maybeHead model.showHeads pose.id pose.joints.nose)
 
 
 {-| Just applies 'renderSinglePose' to all the poses; and puts them in a list.
@@ -275,32 +279,32 @@ renderPoses model =
         (concat (map (renderSinglePose model) model.poses))
 
 
-bones : String -> JointSpec -> List (Svg m)
-bones colour joints =
+bones : ( String, String ) -> JointSpec -> List (Svg m)
+bones ( cLeft, cRight ) joints =
     let
         paths =
-            [ [ .nose, .reye, .rear ]
-            , [ .nose, .leye, .lear ]
-            , [ .nose, .neck ]
-            , [ .neck, .rshoulder, .relbow, .rwrist ]
-            , [ .neck, .lshoulder, .lelbow, .lwrist ]
-            , [ .neck, .rhip, .rknee, .rankle ]
-            , [ .neck, .lhip, .lknee, .lankle ]
+            [ map ((,) cRight) [ .nose, .reye, .rear ]
+            , map ((,) cLeft) [ .nose, .leye, .lear ]
+            , map ((,) "#ffafd7") [ .nose, .neck ]
+            , map ((,) cRight) [ .neck, .rshoulder, .relbow, .rwrist ]
+            , map ((,) cLeft) [ .neck, .lshoulder, .lelbow, .lwrist ]
+            , map ((,) cRight) [ .neck, .rhip, .rknee, .rankle ]
+            , map ((,) cLeft) [ .neck, .lhip, .lknee, .lankle ]
             ]
 
         drawable =
-            map (takeWhile (\j -> notZero (j joints))) paths
+            map (takeWhile (\( _, j ) -> notZero (j joints))) paths
 
         lines =
             map (\js -> map2 mkLine js (drop 1 js)) drawable
 
-        mkLine j1 j2 =
+        mkLine ( _, j1 ) ( c, j2 ) =
             line
                 [ x1 (toString ((j1 joints).x / 2))
                 , y1 (toString ((j1 joints).y / 2))
                 , x2 (toString ((j2 joints).x / 2))
                 , y2 (toString ((j2 joints).y / 2))
-                , style ("stroke-width: 5; stroke: " ++ colour ++ ";")
+                , style ("stroke-width: 5; stroke: " ++ c ++ ";")
                 ]
                 []
     in
