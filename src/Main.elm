@@ -5,7 +5,7 @@ import Html exposing (div, program, Html, input, label, img)
 import Html.Attributes exposing (class, id, value, name, for, type_, checked)
 import Html.Events exposing (onInput, onClick)
 import Json.Decode exposing (string, decodeString)
-import List exposing (map, filter, map2, drop, concat, length)
+import List exposing (map, sort, filter, map2, drop, concat, length)
 import Maybe exposing (withDefault)
 import PoseProtocol exposing (..)
 import Svg exposing (Svg, svg, circle, text, image, line)
@@ -264,11 +264,28 @@ maybeHead showHeads id point =
             []
         ]
 
+-- Seriously no indexOf function??
+helper : List a -> a -> Int -> Int
+helper lst elem offset =
+  case lst of
+    []      -> -1
+    x :: xs ->
+      if x == elem then offset
+      else helper xs elem (offset + 1)
 
-renderSinglePose : Model -> Pose -> List (Svg m)
-renderSinglePose model pose =
-    (bones (getColourPairForId pose.id) (pose.joints) ++ maybeHead model.showHeads pose.id pose.joints.nose)
+indexOf lst element =
+  helper lst element 0
 
+renderSinglePose : Model -> List Float -> Pose -> List (Svg m)
+renderSinglePose model necks pose =
+    let
+      myIndex = (indexOf necks (pose.joints.neck.x))
+    in
+      (bones (getColourPairForId pose.id) (pose.joints) ++ maybeHead model.showHeads myIndex pose.joints.nose)
+
+-- TODO: How to do this without a lambda
+-- TODO: Probably sortBy rather than sort
+index poses = sort (map (\e -> e.joints.neck.x) poses)
 
 {-| Just applies 'renderSinglePose' to all the poses; and puts them in a list.
 Note that we've halved the display sie so things are easier to deal with.
@@ -276,8 +293,7 @@ Note that we've halved the display sie so things are easier to deal with.
 renderPoses : Model -> Html m
 renderPoses model =
     svg [ width "640", height "360" ]
-        (concat (map (renderSinglePose model) model.poses))
-
+        (concat (map (renderSinglePose model (index model.poses)) model.poses))
 
 bones : ( String, String ) -> JointSpec -> List (Svg m)
 bones ( cLeft, cRight ) joints =
