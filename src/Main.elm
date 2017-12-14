@@ -268,11 +268,12 @@ maybeHead showHeads id point =
 helper : List a -> a -> Int -> Int
 helper lst elem offset =
   case lst of
-    []      -> -1
+    []      -> 0
     x :: xs ->
       if x == elem then offset
       else helper xs elem (offset + 1)
 
+indexOf : List a -> a -> Int
 indexOf lst element =
   helper lst element 0
 
@@ -283,9 +284,8 @@ renderSinglePose model necks pose =
     in
       (bones (getColourPairForId pose.id) (pose.joints) ++ maybeHead model.showHeads myIndex pose.joints.nose)
 
--- TODO: How to do this without a lambda
--- TODO: Probably sortBy rather than sort
-index poses = sort (map (\e -> e.joints.neck.x) poses)
+index : List Pose -> List Float
+index poses = sort (map (.joints >> .neck >> .x) poses)
 
 {-| Just applies 'renderSinglePose' to all the poses; and puts them in a list.
 Note that we've halved the display sie so things are easier to deal with.
