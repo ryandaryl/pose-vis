@@ -282,7 +282,7 @@ renderSinglePose model necks pose =
     let
       myIndex = (indexOf necks (pose.joints.neck.x))
     in
-      (bones (getColourPairForId pose.id) (pose.joints) ++ maybeHead model.showHeads myIndex pose.joints.nose)
+      (bones (getColourPairForId myIndex) (pose.joints) ++ maybeHead model.showHeads myIndex pose.joints.nose)
 
 index : List Pose -> List Float
 index poses = sort (map (.joints >> .neck >> .x) poses)
