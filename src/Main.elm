@@ -34,6 +34,9 @@ import Svg.Attributes
 port onMessage : (String -> msg) -> Sub msg
 
 
+port setTopic : (String -> msg) -> Sub msg
+
+
 port sendConfigureMessage : String -> Cmd msg
 
 
@@ -75,7 +78,7 @@ type alias Model =
 
 init : ( Model, Cmd Msg )
 init =
-    ( Model [] "pose/output" "mqtt://zeus.local:1884" True False 0.8, Cmd.none )
+    ( Model [] "" "mqtt://zeus.local:1884" True False 0.9, Cmd.none )
 
 
 view : Model -> Html Msg
@@ -152,6 +155,9 @@ update msg model =
         UpdateMqttServer server ->
             ( { model | mqttServer = server }, changeMqttServer server )
 
+        UpdateInTopicFromJS topic ->
+            ( { model | inTopic = topic }, Cmd.none )
+
         UpdateInTopic topic ->
             ( { model | inTopic = topic }, changeMqttTopic topic )
 
@@ -187,6 +193,7 @@ update msg model =
 
 {-| TODO: This should be radically cleaned up.
 -}
+doSendConfigureMessage : { a | danceCrew : Bool, temperature : Float } -> Cmd msg
 doSendConfigureMessage model =
     let
         json =
@@ -219,6 +226,7 @@ type Msg
     = NoOp
       -- Inoming MQTT Message
     | Message String
+    | UpdateInTopicFromJS String
       -- Outgoing actions for the form fields
     | UpdateInTopic String
     | UpdateMqttServer String
@@ -264,28 +272,42 @@ maybeHead showHeads id point =
             []
         ]
 
+
+
 -- Seriously no indexOf function??
+
+
 helper : List a -> a -> Int -> Int
 helper lst elem offset =
-  case lst of
-    []      -> 0
-    x :: xs ->
-      if x == elem then offset
-      else helper xs elem (offset + 1)
+    case lst of
+        [] ->
+            0
+
+        x :: xs ->
+            if x == elem then
+                offset
+            else
+                helper xs elem (offset + 1)
+
 
 indexOf : List a -> a -> Int
 indexOf lst element =
-  helper lst element 0
+    helper lst element 0
+
 
 renderSinglePose : Model -> List Float -> Pose -> List (Svg m)
 renderSinglePose model necks pose =
     let
-      myIndex = (indexOf necks (pose.joints.neck.x))
+        myIndex =
+            (indexOf necks (pose.joints.neck.x))
     in
-      (bones (getColourPairForId myIndex) (pose.joints) ++ maybeHead model.showHeads myIndex pose.joints.nose)
+        (bones (getColourPairForId myIndex) (pose.joints) ++ maybeHead model.showHeads myIndex pose.joints.nose)
+
 
 index : List Pose -> List Float
-index poses = sort (map (.joints >> .neck >> .x) poses)
+index poses =
+    sort (map (.joints >> .neck >> .x) poses)
+
 
 {-| Just applies 'renderSinglePose' to all the poses; and puts them in a list.
 Note that we've halved the display sie so things are easier to deal with.
@@ -294,6 +316,7 @@ renderPoses : Model -> Html m
 renderPoses model =
     svg [ width "640", height "360" ]
         (concat (map (renderSinglePose model (index model.poses)) model.poses))
+
 
 bones : ( String, String ) -> JointSpec -> List (Svg m)
 bones ( cLeft, cRight ) joints =
@@ -327,6 +350,7 @@ bones ( cLeft, cRight ) joints =
         concat lines
 
 
+notZero : { a | score : number, x : number1, y : number2 } -> Bool
 notZero p =
     not (p.x == 0 || p.y == 0 || p.score == 0)
 
@@ -345,7 +369,7 @@ jointsOnly ps =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    onMessage Message
+    Sub.batch [ onMessage Message, setTopic UpdateInTopic ]
 
 
 main : Program Never Model Msg

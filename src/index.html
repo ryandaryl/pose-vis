@@ -21,10 +21,45 @@ img.logo { margin-left: 50px; margin-top: 10px; }
 
 label { padding: 5px; }
 </style>
-
 <script>
-    var client = mqtt.connect("mqtt://zeus.local:1884")
-    var topic  = "pose/output";
+function advertise (mqtt_server, namespace) {
+    console.log(mqtt_server);
+    console.log(namespace);
+
+    var service_manager = namespace + "/manager/service";
+    var host            = "js";
+    var pid             = Math.random().toString().slice(2);
+    var my_topic        = namespace + "/" + host + "/" + pid;
+
+    var will = {"topic": my_topic + "/state", "payload": "nil"}
+
+    var client = mqtt.connect(mqtt_server, {"will": will});
+
+    var protocol        = "com.silverpond.protocol.pose:0";
+    var owner           = "Web";
+
+    client.on('message', function (topic, message) {
+        var msg = message.toString();
+        var sm_topic = msg.split(" ")[1];
+
+        var register = "(add " + my_topic + " " + protocol + " " + owner + " ())";
+        client.publish(sm_topic + "/in", register);
+    });
+
+    client.subscribe(service_manager);
+    return my_topic;
+}
+</script>
+<script>
+
+    var mqtt_server = "mqtt://zeus.local:1884"
+    var namespace = "test"
+    var my_topic  = advertise(mqtt_server, namespace);
+
+    var client = mqtt.connect(mqtt_server)
+    var topic  = my_topic + "/in";
+
+    app.ports.setTopic.send(topic);
 
     function reconnect () {
         client.subscribe(topic);
@@ -37,9 +72,7 @@ label { padding: 5px; }
     reconnect();
 
     app.ports.sendConfigureMessage.subscribe(function(json) {
-        console.log("sending configure ,,,");
-        console.log(json)
-        client.publish(topic, json)
+        client.publish(my_topic + "/in", json)
     });
 
     app.ports.changeMqttTopic.subscribe(function (newTopic) {
@@ -49,6 +82,7 @@ label { padding: 5px; }
     });
 
     app.ports.changeMqttServer.subscribe(function (newServer) {
+        mqtt_server = newServer;
         client.end();
         client = mqtt.connect(newServer);
         reconnect();
