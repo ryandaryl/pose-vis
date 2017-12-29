@@ -78,11 +78,7 @@ type alias Model =
 
 init : ( Model, Cmd Msg )
 init =
-    ( Model [] "" "mqtt://ares.local:1884" True False 0.9, Cmd.none )
-
-
-
--- ( Model [] "" "mqtt://zeus.local:1884" True False 0.9, Cmd.none )
+    ( Model [] "" "mqtt://zeus.local:1884" True False 0.9, Cmd.none )
 
 
 view : Model -> Html Msg

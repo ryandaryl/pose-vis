@@ -43,7 +43,9 @@ function advertise (mqtt_server, namespace) {
         var sm_topic = msg.split(" ")[1];
 
         var register = "(add " + my_topic + " " + protocol + " " + owner + " ())";
+        console.log("register: " + register);
         smClient.publish(sm_topic + "/in", register);
+        console.log("Advertised myself to: " + sm_topic + "/in");
     });
 
     smClient.subscribe(service_manager);
@@ -51,10 +53,8 @@ function advertise (mqtt_server, namespace) {
 }
 </script>
 <script>
-    // var mqtt_server = "mqtt://zeus.local:1884"
-    var mqtt_server = "mqtt://ares.local:1884"
-    // var namespace   = "test"
-    var namespace   = "dev"
+    var mqtt_server = "mqtt://zeus.local:1884"
+    var namespace   = "test"
 
     var client;
     var my_topic;
@@ -67,12 +67,11 @@ function advertise (mqtt_server, namespace) {
 
         client.subscribe(topic);
 
-        console.log("Client: " + client);
         console.log("Subscribing to ... [" + topic + "]");
         app.ports.setTopic.send(topic);
 
         client.on('message', function (mTopic, message) {
-            console.log("on  topic: " + mTopic);
+            console.log(" on topic: " + mTopic);
             console.log("found msg: " + message);
             var msg = message.toString();
             app.ports.onMessage.send(msg);
@@ -90,7 +89,7 @@ function advertise (mqtt_server, namespace) {
     app.ports.changeMqttTopic.subscribe(function (newTopic) {
         console.log("Changing topic ... from " + topic + " to " + newTopic);
         if (topic == newTopic){
-            console.log("skipping topic change to self topic");
+            console.log("Skipping topic change to self topic");
             return;
         }
         client.unsubscribe(topic);
