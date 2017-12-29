@@ -51,17 +51,21 @@ function advertise (mqtt_server, namespace) {
 }
 </script>
 <script>
+    // var mqtt_server = "mqtt://zeus.local:1884"
+    var mqtt_server = "mqtt://ares.local:1884"
+    // var namespace   = "test"
+    var namespace   = "dev"
 
-    var mqtt_server = "mqtt://zeus.local:1884"
-    var namespace = "test"
-    var my_topic  = advertise(mqtt_server, namespace);
-
-    var client = mqtt.connect(mqtt_server)
-    var topic  = my_topic + "/in";
-
-    app.ports.setTopic.send(topic);
+    var my_topic;
+    var client;
+    var topic;
 
     function reconnect () {
+        client   = mqtt.connect(mqtt_server)
+        my_topic = advertise(mqtt_server, namespace);
+        topic    = my_topic + "/in";
+
+        app.ports.setTopic.send(topic);
         client.subscribe(topic);
 
         client.on('message', function (topic, message) {
@@ -84,7 +88,6 @@ function advertise (mqtt_server, namespace) {
     app.ports.changeMqttServer.subscribe(function (newServer) {
         mqtt_server = newServer;
         client.end();
-        client = mqtt.connect(newServer);
         reconnect();
     });
 </script>
