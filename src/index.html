@@ -56,8 +56,8 @@ function advertise (mqtt_server, namespace) {
     // var namespace   = "test"
     var namespace   = "dev"
 
-    var my_topic;
     var client;
+    var my_topic;
     var topic;
 
     function reconnect () {
@@ -65,10 +65,13 @@ function advertise (mqtt_server, namespace) {
         my_topic = advertise(mqtt_server, namespace);
         topic    = my_topic + "/in";
 
+        console.log("Subscribing to ..." + topic);
         app.ports.setTopic.send(topic);
         client.subscribe(topic);
 
-        client.on('message', function (topic, message) {
+        client.on('message', function (mTopic, message) {
+            console.log("on  topic: " + mTopic);
+            console.log("found msg: " + message);
             var msg = message.toString();
             app.ports.onMessage.send(msg);
         });
