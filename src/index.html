@@ -65,10 +65,11 @@ function advertise (mqtt_server, namespace) {
         client   = mqtt.connect(mqtt_server)
         topic    = my_topic + "/in";
 
+        client.subscribe(topic);
+
         console.log("Client: " + client);
         console.log("Subscribing to ... [" + topic + "]");
         app.ports.setTopic.send(topic);
-        client.subscribe(topic);
 
         client.on('message', function (mTopic, message) {
             console.log("on  topic: " + mTopic);
@@ -87,7 +88,11 @@ function advertise (mqtt_server, namespace) {
     });
 
     app.ports.changeMqttTopic.subscribe(function (newTopic) {
-        console.log("Changing topic ...: " + newTopic);
+        console.log("Changing topic ... from " + topic + " to " + newTopic);
+        if (topic == newTopic){
+            console.log("skipping topic change to self topic");
+            return;
+        }
         client.unsubscribe(topic);
         client.subscribe(newTopic);
         topic = newTopic;
