@@ -61,11 +61,12 @@ function advertise (mqtt_server, namespace) {
     var topic;
 
     function reconnect () {
-        client   = mqtt.connect(mqtt_server)
         my_topic = advertise(mqtt_server, namespace);
+        client   = mqtt.connect(mqtt_server)
         topic    = my_topic + "/in";
 
-        console.log("Subscribing to ..." + topic);
+        console.log("Client: " + client);
+        console.log("Subscribing to ... [" + topic + "]");
         app.ports.setTopic.send(topic);
         client.subscribe(topic);
 
@@ -79,7 +80,7 @@ function advertise (mqtt_server, namespace) {
     reconnect();
 
     app.ports.sendConfigureMessage.subscribe(function(json) {
-        client.publish(my_topic + "/in", json)
+        client.publish(my_topic + "/out", json)
     });
 
     app.ports.changeMqttTopic.subscribe(function (newTopic) {
