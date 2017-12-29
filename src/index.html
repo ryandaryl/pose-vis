@@ -33,20 +33,20 @@ function advertise (mqtt_server, namespace) {
 
     var will = {"topic": my_topic + "/state", "payload": "nil"}
 
-    var client = mqtt.connect(mqtt_server, {"will": will});
+    var smClient = mqtt.connect(mqtt_server, {"will": will});
 
     var protocol        = "com.silverpond.protocol.pose:0";
     var owner           = "Web";
 
-    client.on('message', function (topic, message) {
+    smClient.on('message', function (topic, message) {
         var msg = message.toString();
         var sm_topic = msg.split(" ")[1];
 
         var register = "(add " + my_topic + " " + protocol + " " + owner + " ())";
-        client.publish(sm_topic + "/in", register);
+        smClient.publish(sm_topic + "/in", register);
     });
 
-    client.subscribe(service_manager);
+    smClient.subscribe(service_manager);
     return my_topic;
 }
 </script>
@@ -80,16 +80,21 @@ function advertise (mqtt_server, namespace) {
     reconnect();
 
     app.ports.sendConfigureMessage.subscribe(function(json) {
+        console.log("Sending configure ...");
+        console.log(my_topic + "/out");
+        console.log(json);
         client.publish(my_topic + "/out", json)
     });
 
     app.ports.changeMqttTopic.subscribe(function (newTopic) {
+        console.log("Changing topic ...: " + newTopic);
         client.unsubscribe(topic);
         client.subscribe(newTopic);
         topic = newTopic;
     });
 
     app.ports.changeMqttServer.subscribe(function (newServer) {
+        console.log("Changing server ...: " + newServer);
         mqtt_server = newServer;
         client.end();
         reconnect();
