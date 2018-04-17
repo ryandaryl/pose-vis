@@ -73,12 +73,13 @@ type alias Model =
     , showHeads : Bool
     , danceCrew : Bool
     , temperature : Float
+    , danceFloor : Bool
     }
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( Model [] "" "mqtt://zeus.local:1884" True False 0.9, Cmd.none )
+    ( Model [] "" "mqtt://zeus.local:1884" True False 0.9 False, Cmd.none )
 
 
 view : Model -> Html Msg
@@ -142,6 +143,14 @@ view model =
                 , class "logo"
                 ]
                 []
+            , label [ for "dance-floor" ] [ text "Floor? " ]
+            , input
+                [ type_ "checkbox"
+                , name "dance-floor"
+                , onClick (DanceFloor (not model.danceFloor))
+                , checked model.danceFloor
+                ]
+                []
             ]
         ]
 
@@ -179,6 +188,13 @@ update msg model =
 
         Message json ->
             ( { model | poses = (decodePoses json) }, Cmd.none )
+
+        DanceFloor floor ->
+            let
+                newModel =
+                    { model | danceFloor = floor }
+            in
+                ( newModel, Cmd.none )
 
         DanceCrew crew ->
             let
@@ -232,6 +248,7 @@ type Msg
     | UpdateMqttServer String
     | ToggleHeads Bool
     | DanceCrew Bool
+    | DanceFloor Bool
     | Temperature Float
 
 
@@ -314,7 +331,16 @@ Note that we've halved the display sie so things are easier to deal with.
 -}
 renderPoses : Model -> Html m
 renderPoses model =
-    svg [ width "640", height "360" ]
+    svg
+        [ width "640"
+        , height "360"
+        , Svg.Attributes.class
+            (if model.danceFloor then
+                "floor"
+             else
+                ""
+            )
+        ]
         (concat (map (renderSinglePose model (index model.poses)) model.poses))
 
 
